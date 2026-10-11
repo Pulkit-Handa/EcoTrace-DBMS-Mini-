@@ -1,0 +1,38 @@
+name: ecotrace
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: ecotrace-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ecotrace
+      POSTGRES_USER: ecotrace_user
+      POSTGRES_PASSWORD: ecotrace_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ecotrace_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecotrace_user -d ecotrace"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  mongo:
+    image: mongo:7
+    container_name: ecotrace-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - ecotrace_mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  ecotrace_pgdata:
+  ecotrace_mongodata:
