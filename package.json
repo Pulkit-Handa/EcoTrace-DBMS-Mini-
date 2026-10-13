@@ -1,0 +1,39 @@
+{
+  "name": "ecotrace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EcoTrace — carbon compliance and vendor ESG platform built with PostgreSQL, MongoDB, pgvector and Next.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:setup": "tsx scripts/setup-db.ts",
+    "db:verify": "tsx scripts/verify-db.ts",
+    "smoke": "node scripts/smoke-test.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "jose": "6.2.13",
+    "lucide-react": "1.61.0",
+    "mongodb": "6.21.0",
+    "mongoose": "8.24.7",
+    "next": "15.5.28",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "recharts": "3.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "autoprefixer": "10.4.21",
+    "playwright": "1.55.0",
+    "postcss": "8.5.6",
+    "tailwindcss": "3.4.19",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
