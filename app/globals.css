@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  border-color: theme('colors.ink.200');
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  background-color: #f5f8f6;
+  color: theme('colors.ink.900');
+}
+
+::selection {
+  background: theme('colors.brand.200');
+  color: theme('colors.brand.950');
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight text-ink-950;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme('colors.brand.500');
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-ink-200/80 bg-white shadow-card;
+  }
+
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift;
+  }
+
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition duration-150 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-700 text-white shadow-sm hover:bg-brand-800 active:translate-y-px;
+  }
+
+  .btn-secondary {
+    @apply btn border border-ink-200 bg-white text-ink-800 shadow-sm hover:border-ink-300 hover:bg-ink-50 active:translate-y-px;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-ink-100 hover:text-ink-900;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm outline-none transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-ink-700;
+  }
+
+  .hint {
+    @apply mt-1.5 text-xs leading-relaxed text-ink-500;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none;
+  }
+
+  .table-base {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .table-base thead {
+    @apply bg-ink-50/80 text-[11px] uppercase tracking-[0.08em] text-ink-500;
+  }
+
+  .table-base th {
+    @apply whitespace-nowrap px-5 py-3 font-semibold;
+  }
+
+  .table-base td {
+    @apply border-t border-ink-100/80 px-5 py-3.5 align-middle text-ink-700;
+  }
+
+  .table-base tbody tr {
+    @apply transition-colors hover:bg-brand-50/40;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-700;
+  }
+
+  .metric-value {
+    @apply text-[1.7rem] font-semibold leading-none tracking-tight text-ink-950;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-ink-100;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-100/70 transition hover:bg-white/[0.07] hover:text-white;
+  }
+
+  .nav-link-active {
+    @apply bg-white/[0.1] text-white shadow-sm ring-1 ring-inset ring-white/10;
+  }
+
+  .prose-report h2 {
+    @apply mt-8 text-xl font-semibold;
+  }
+
+  .prose-report p {
+    @apply mt-3 text-sm leading-7 text-ink-600;
+  }
+}
+
+/* Subtle grid used by the login hero and page backgrounds. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.bg-grid-light {
+  background-image:
+    linear-gradient(to right, rgba(6, 78, 59, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(6, 78, 59, 0.04) 1px, transparent 1px);
+  background-size: 38px 38px;
+}
+
+/* Thin scrollbars for scrollable tables and result panes. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.ink.300') transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: theme('colors.ink.300');
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recharts-wrapper :focus {
+  outline: none;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-in {
+  animation: toast-in 0.25s ease-out both;
+}
