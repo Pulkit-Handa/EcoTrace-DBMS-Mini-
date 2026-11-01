@@ -79,6 +79,7 @@ CREATE TABLE vendor_reports (
     dept_id      INT NOT NULL,
     mongo_doc_id VARCHAR(100) NOT NULL UNIQUE,
     uploaded_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    embedding    JSON,
     CONSTRAINT fk_vendor_reports_dept FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
 ) COMMENT = 'Relational bridge to unstructured vendor ESG documents stored in MongoDB.';
 

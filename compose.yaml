@@ -2,19 +2,20 @@ name: ecotrace
 
 services:
   db:
-    image: pgvector/pgvector:pg17
+    image: mysql:8
     container_name: ecotrace-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ecotrace
-      POSTGRES_USER: ecotrace_user
-      POSTGRES_PASSWORD: ecotrace_pass
+      MYSQL_DATABASE: ecotrace
+      MYSQL_USER: ecotrace_user
+      MYSQL_PASSWORD: ecotrace_pass
+      MYSQL_ROOT_PASSWORD: ecotrace_root_pass
     ports:
-      - "5432:5432"
+      - "3307:3306"
     volumes:
-      - ecotrace_pgdata:/var/lib/postgresql/data
+      - ecotrace_mysqldata:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ecotrace_user -d ecotrace"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "ecotrace_user", "-pecotrace_pass"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -34,5 +35,5 @@ services:
       retries: 12
 
 volumes:
-  ecotrace_pgdata:
+  ecotrace_mysqldata:
   ecotrace_mongodata:

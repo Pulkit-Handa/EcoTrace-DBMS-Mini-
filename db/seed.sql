@@ -4,11 +4,13 @@
 -- bcrypt hash generated with bcryptjs (cost 10).
 -- ===========================================================================
 
+SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE vendor_reports;
 TRUNCATE TABLE carbon_credits;
 TRUNCATE TABLE emission_records;
 TRUNCATE TABLE users;
 TRUNCATE TABLE departments;
+SET FOREIGN_KEY_CHECKS = 1;
 
 INSERT INTO departments (name, emission_cap) VALUES
     ('Engineering', 5000.00),
