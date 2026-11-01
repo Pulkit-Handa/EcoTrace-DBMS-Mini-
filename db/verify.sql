@@ -1,51 +1,53 @@
 -- ===========================================================================
--- EcoTrace — database verification queries
--- Run with:  psql "$POSTGRES_URL" -f db/verify.sql
+-- EcoTrace — database verification queries (MySQL 8.0+)
+-- Run with:  mysql "$MYSQL_URL" -e "source db/verify.sql"
 -- ===========================================================================
 
-\echo '== 1. Five application tables =='
+-- 1. Five application tables
 SELECT table_name
 FROM information_schema.tables
-WHERE table_schema = 'public'
+WHERE table_schema = DATABASE()
   AND table_type = 'BASE TABLE'
 ORDER BY table_name;
 
-\echo '== 2. Constraints =='
-SELECT conrelid::regclass AS table_name, conname, contype
-FROM pg_constraint
-WHERE connamespace = 'public'::regnamespace
-ORDER BY table_name, contype;
+-- 2. Constraints
+SELECT TABLE_NAME AS table_name, CONSTRAINT_NAME AS conname, CONSTRAINT_TYPE AS contype
+FROM information_schema.TABLE_CONSTRAINTS
+WHERE TABLE_SCHEMA = DATABASE()
+ORDER BY TABLE_NAME, CONSTRAINT_TYPE;
 
-\echo '== 3. Indexes =='
-SELECT tablename, indexname
-FROM pg_indexes
-WHERE schemaname = 'public'
-ORDER BY tablename, indexname;
+-- 3. Indexes
+SELECT TABLE_NAME AS tablename, INDEX_NAME AS indexname
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = DATABASE()
+ORDER BY TABLE_NAME, INDEX_NAME;
 
-\echo '== 4. Views =='
+-- 4. Views
 SELECT table_name
 FROM information_schema.views
-WHERE table_schema = 'public'
+WHERE table_schema = DATABASE()
 ORDER BY table_name;
 
-\echo '== 5. Trigger =='
-SELECT event_object_table, trigger_name, action_timing, event_manipulation
-FROM information_schema.triggers
-WHERE trigger_schema = 'public';
+-- 5. Trigger
+SELECT EVENT_OBJECT_TABLE AS event_object_table, TRIGGER_NAME AS trigger_name,
+       ACTION_TIMING AS action_timing, EVENT_MANIPULATION AS event_manipulation
+FROM information_schema.TRIGGERS
+WHERE TRIGGER_SCHEMA = DATABASE();
 
-\echo '== 6. Stored procedure =='
-SELECT routine_name, routine_type
-FROM information_schema.routines
-WHERE routine_schema = 'public'
-  AND routine_name IN ('buy_credits', 'flag_breach');
+-- 6. Stored procedure
+SELECT ROUTINE_NAME AS routine_name, ROUTINE_TYPE AS routine_type
+FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = DATABASE()
+  AND ROUTINE_NAME IN ('buy_credits', 'flag_breach')
+ORDER BY ROUTINE_NAME;
 
-\echo '== 7. Compliance report =='
+-- 7. Compliance report
 SELECT * FROM compliance_summary ORDER BY utilisation_pct DESC;
 
-\echo '== 8. Department + scope report =='
+-- 8. Department + scope report
 SELECT * FROM dept_scope_summary ORDER BY total_emission_kg DESC;
 
-\echo '== 9. Rows per table =='
+-- 9. Rows per table
 SELECT 'departments' AS relation, COUNT(*) FROM departments
 UNION ALL SELECT 'users', COUNT(*) FROM users
 UNION ALL SELECT 'emission_records', COUNT(*) FROM emission_records
