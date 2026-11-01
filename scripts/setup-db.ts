@@ -1,22 +1,18 @@
 /**
- * EcoTrace — one-command database setup.
+ * EcoTrace — one-command database setup (MySQL + MongoDB + app-side vectors).
  *
- *   1. Applies db/schema.sql, db/seed.sql and db/advanced.sql
- *   2. Attempts the optional pgvector migration
- *   3. Replaces the MongoDB vendor_reports collection with sample documents
- *   4. Inserts the SQL bridge rows and generates pgvector embeddings
+ *   1. Applies db/schema.sql, db/seed.sql and db/advanced.sql to MySQL
+ *   2. Replaces the MongoDB vendor_reports collection with sample documents
+ *   3. Inserts the SQL bridge rows and stores app-computed embeddings as JSON
  *
  * Run with: npm run db:setup
  */
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Client } from 'pg';
 import { MongoClient } from 'mongodb';
-import {
-  buildDocumentEmbedding,
-  toVectorLiteral,
-} from '../lib/embeddings';
+import { buildDocumentEmbedding } from '../lib/embeddings';
+import { getPool } from '../lib/mysql';
 
 const ROOT = process.cwd();
 
@@ -138,41 +134,27 @@ const seedDocuments: SeedDocument[] = [
 async function main() {
   loadLocalEnv();
 
-  const postgresUrl = process.env.POSTGRES_URL;
+  const mysqlUrl = process.env.MYSQL_URL;
   const mongoUrl = process.env.MONGODB_URI;
 
-  if (!postgresUrl) throw new Error('POSTGRES_URL is missing in .env.local');
+  if (!mysqlUrl) throw new Error('MYSQL_URL is missing in .env.local');
   if (!mongoUrl) throw new Error('MONGODB_URI is missing in .env.local');
 
   console.log('\nEcoTrace database setup');
   console.log('──────────────────────────────────────────────');
 
-  const pg = new Client({ connectionString: postgresUrl });
-  await pg.connect();
+  const mysqlConn = await getPool().getConnection();
 
   try {
     console.log('→ Applying relational schema...');
-    await pg.query(sqlFile('schema.sql'));
+    await mysqlConn.query(sqlFile('schema.sql'));
 
     console.log('→ Seeding departments, users, emissions and credits...');
-    await pg.query(sqlFile('seed.sql'));
+    await mysqlConn.query(sqlFile('seed.sql'));
 
-    console.log('→ Creating views, trigger and stored procedure...');
-    await pg.query(sqlFile('advanced.sql'));
-
-    let vectorReady = false;
-    try {
-      console.log('→ Enabling pgvector...');
-      await pg.query(sqlFile('pgvector.sql'));
-      vectorReady = true;
-    } catch (error) {
-      console.warn(
-        '  ! pgvector unavailable — continuing with MongoDB text search only.',
-      );
-      console.warn(
-        `    ${error instanceof Error ? error.message.split('\n')[0] : error}`,
-      );
-    }
+    // Note: db/advanced.sql is PostgreSQL-only (views, triggers, procedures)
+    // and is intentionally skipped for MySQL. View logic is inlined in
+    // lib/queries.ts so the app works without it.
 
     const mongo = new MongoClient(mongoUrl, {
       serverSelectionTimeoutMS: 8_000,
@@ -189,29 +171,15 @@ async function main() {
       const result = await collection.insertMany(seedDocuments);
       const ids = Object.values(result.insertedIds).map((id) => String(id));
 
-      await collection.createIndex(
-        {
-          vendor_name: 'text',
-          raw_text: 'text',
-          compliance_tags: 'text',
-        },
-        {
-          name: 'vendor_reports_text_idx',
-          weights: { vendor_name: 5, compliance_tags: 3, raw_text: 1 },
-        },
-      );
-      await collection.createIndex({ dept_id: 1, reporting_year: -1 });
-
-      console.log('→ Linking MongoDB documents from PostgreSQL...');
+      console.log('→ Linking MongoDB documents from MySQL...');
       const reportIds: number[] = [];
 
       for (let index = 0; index < seedDocuments.length; index += 1) {
         const document = seedDocuments[index];
-        const inserted = await pg.query<{ report_id: number }>(
+        const [insertResult] = await mysqlConn.query(
           `INSERT INTO vendor_reports
                (vendor_name, dept_id, mongo_doc_id, uploaded_at)
-           VALUES ($1, $2, $3, $4)
-           RETURNING report_id`,
+           VALUES (?, ?, ?, ?)`,
           [
             document.vendor_name,
             document.dept_id,
@@ -219,48 +187,40 @@ async function main() {
             document.createdAt,
           ],
         );
-        reportIds.push(inserted.rows[0].report_id);
+        const insertId = Number((insertResult as { insertId: number }).insertId);
+        reportIds.push(insertId);
+
+        console.log(
+          `→ Generating embedding for ${document.vendor_name}...`,
+        );
+        const embedding = buildDocumentEmbedding({
+          vendor_name: document.vendor_name,
+          raw_text: document.raw_text,
+          compliance_tags: document.compliance_tags,
+          reporting_year: document.reporting_year,
+        });
+        await mysqlConn.query(
+          `UPDATE vendor_reports SET embedding = ? WHERE report_id = ?`,
+          [JSON.stringify(embedding), insertId],
+        );
       }
 
-      if (vectorReady) {
-        console.log('→ Generating 384-dimension pgvector embeddings...');
-        for (let index = 0; index < seedDocuments.length; index += 1) {
-          const document = seedDocuments[index];
-          const embedding = buildDocumentEmbedding({
-            vendor_name: document.vendor_name,
-            raw_text: document.raw_text,
-            compliance_tags: document.compliance_tags,
-            reporting_year: document.reporting_year,
-          });
-          await pg.query(
-            `UPDATE vendor_reports SET embedding = $1::vector WHERE report_id = $2`,
-            [toVectorLiteral(embedding), reportIds[index]],
-          );
-        }
-      }
-
-      const counts = await pg.query<{
-        departments: number;
-        users: number;
-        emissions: number;
-        credits: number;
-        vendors: number;
-      }>(
+      const [countRows] = await mysqlConn.query(
         `SELECT
-            (SELECT COUNT(*)::int FROM departments) AS departments,
-            (SELECT COUNT(*)::int FROM users) AS users,
-            (SELECT COUNT(*)::int FROM emission_records) AS emissions,
-            (SELECT COUNT(*)::int FROM carbon_credits) AS credits,
-            (SELECT COUNT(*)::int FROM vendor_reports) AS vendors`,
+            (SELECT COUNT(*) FROM departments) AS departments,
+            (SELECT COUNT(*) FROM users) AS users,
+            (SELECT COUNT(*) FROM emission_records) AS emissions,
+            (SELECT COUNT(*) FROM carbon_credits) AS credits,
+            (SELECT COUNT(*) FROM vendor_reports) AS vendors`,
       );
 
-      const summary = counts.rows[0];
+      const summary = (countRows as { departments: number; users: number; emissions: number; credits: number; vendors: number }[])[0];
       console.log('\nSetup complete');
       console.log('──────────────────────────────────────────────');
-      console.log(`  PostgreSQL : ${summary.departments} departments, ${summary.users} users,`);
+      console.log(`  MySQL    : ${summary.departments} departments, ${summary.users} users,`);
       console.log(`               ${summary.emissions} emission records, ${summary.credits} credit transactions`);
-      console.log(`  MongoDB    : ${ids.length} vendor reports`);
-      console.log(`  pgvector   : ${vectorReady ? 'enabled (384 dimensions)' : 'disabled'}`);
+      console.log(`  MongoDB  : ${ids.length} vendor reports`);
+      console.log(`  Vectors  : app-side cosine similarity (384 dimensions, stored as JSON)`);
       console.log('\nDemo accounts (password: password123)');
       console.log('  auditor   → alice@eco.com');
       console.log('  dept lead → bob@eco.com   (Operations)');
@@ -270,7 +230,7 @@ async function main() {
       await mongo.close();
     }
   } finally {
-    await pg.end();
+    mysqlConn.release();
   }
 }
 

@@ -5,7 +5,7 @@
 -- aggregate functions and a subquery with IN.
 -- ===========================================================================
 
-BEGIN;
+START TRANSACTION;
 
 -- 1. INSERT ---------------------------------------------------------------
 INSERT INTO emission_records (dept_id, user_id, scope, value_kgco2, description)
@@ -48,7 +48,7 @@ FROM departments d
 WHERE d.dept_id IN (
     SELECT e.dept_id
     FROM emission_records e
-    WHERE e.recorded_at >= date_trunc('year', CURRENT_DATE)
+    WHERE e.recorded_at >= DATE_FORMAT(CURRENT_DATE, '%Y-01-01')
     GROUP BY e.dept_id
     HAVING SUM(e.value_kgco2) > 3000
 )

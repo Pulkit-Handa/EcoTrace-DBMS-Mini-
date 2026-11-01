@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import bcrypt from 'bcryptjs';
-import { query } from './postgres';
+import { query } from './mysql';
 import {
   SESSION_COOKIE,
   verifySessionToken,
@@ -52,7 +52,7 @@ export async function authenticateUser(
             d.name AS dept_name
        FROM users u
        LEFT JOIN departments d ON d.dept_id = u.dept_id
-      WHERE LOWER(u.email) = LOWER($1)
+      WHERE LOWER(u.email) = LOWER(?)
       LIMIT 1`,
     [email.trim()],
   );
